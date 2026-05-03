@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>User Posts</title>
+</head>
+<body>
+    <div id="app">
+        <h1>User Posts</h1>
+        <form id="postForm">
+            <input type="text" id="postContent" placeholder="What’s on your mind?" required>
+            <button type="submit">Post</button>
+        </form>
+        <div id="postsList"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.js"></script>
+    <script>
+        const { createClient } = supabase;
+        const supabaseUrl = 'your_supabase_url';
+        const supabaseKey = 'your_supabase_key';
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const postForm = document.getElementById('postForm');
+        const postContent = document.getElementById('postContent');
+        const postsList = document.getElementById('postsList');
+
+        // Display all posts
+        async function displayPosts() {
+            const { data: posts, error } = await supabase
+                .from('posts')
+                .select('*');
+            if (error) console.error(error);
+            if (posts) {
+                postsList.innerHTML = '';
+                posts.forEach(post => {
+                    const postDiv = document.createElement('div');
+                    postDiv.textContent = post.content;
+                    postDiv.appendChild(createDeleteButton(post.id));
+                    postsList.appendChild(postDiv);
+                });
+            }
+        }
+
+        // Create a new post
+        postForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const { data, error } = await supabase
+                .from('posts')
+                .insert([{ content: postContent.value }]);
+            if (error) console.error(error);
+            else {
+                postContent.value = '';
+                displayPosts();
+            }
+        });
+
+        // Delete a post
+        function createDeleteButton(postId) {
+            const button = document.createElement('button');
+            button.textContent = 'Delete';
+            button.onclick = async () => {
+                const { error } = await supabase
+                    .from('posts')
+                    .delete()
+                    .eq('id', postId);
+                if (error) console.error(error);
+                else displayPosts();
+            };
+            return button;
+        }
+
+        // Listen for real-time updates
+        supabase
+            .from('posts')
+            .on('INSERT', () => displayPosts())
+            .on('DELETE', () => displayPosts())
+            .subscribe();
+
+        // Initial load of posts
+        displayPosts();
+    </script>
+</body>
+</html>
